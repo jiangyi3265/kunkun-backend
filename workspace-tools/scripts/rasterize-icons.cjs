@@ -1,0 +1,4 @@
+// Export the code-native SVG icon set to PNG for WeChat's local image support.
+const fs=require('node:fs'),path=require('node:path'),{createRequire}=require('node:module');
+const {chromium}=createRequire(process.env.APPDATA+'/npm/node_modules/')('playwright');
+(async()=>{const dir=path.resolve(__dirname,'../代练/static/icons'),browser=await chromium.launch();try{const page=await browser.newPage({viewport:{width:96,height:96}});let count=0;for(const file of fs.readdirSync(dir).filter(f=>f.endsWith('.svg'))){await page.setContent('<style>html,body{margin:0;background:transparent}svg{display:block;width:96px;height:96px}</style>'+fs.readFileSync(path.join(dir,file),'utf8'));await page.screenshot({path:path.join(dir,file.replace('.svg','.png')),omitBackground:true});count++}console.log('Exported '+count+' PNG icons')}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

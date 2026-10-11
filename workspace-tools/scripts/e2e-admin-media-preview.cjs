@@ -1,0 +1,22 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const {chromium}=require('node:module').createRequire(process.env.APPDATA+'/npm/node_modules/')('playwright');
+const env=require('./test-env.cjs'),root=path.resolve(__dirname,'..'),output=require('./test-output.cjs').dir('recheck-20261002');
+const token=process.env.ADMIN_TOKEN||JSON.parse(fs.readFileSync(path.join(root,'.runtime/admin-session.json'),'utf8')).token;
+const asset='/boost-media/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png',picture='<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="#e6f2ff"/><rect x="40" y="40" width="560" height="320" rx="20" fill="#2356a8"/><text x="320" y="190" text-anchor="middle" font-family="sans-serif" font-size="32" fill="white">Evidence preview</text><text x="320" y="240" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#d5e7ff">Fresh authorized URL</text></svg>';
+let browser;const errors=[],checks=[];
+(async()=>{
+ browser=await chromium.launch();const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addCookies([{name:'Admin-Token',value:token,domain:'127.0.0.1',path:'/'}]);const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+ let grants=0,expired=false,allowed=true;
+ await page.route('**/boost-admin/list/members?*',r=>r.fulfill({json:{code:200,data:{items:[{id:991,username:'qa_preview',nickname:'凭证预览回归',certification:'PENDING',status:'ACTIVE',balanceCents:0,proof:JSON.stringify([asset])}],total:1}}}));
+ await page.route('**/boost-admin/media/access',r=>{grants++;return r.fulfill({json:{code:200,data:{urls:allowed?{[asset]:asset+'?grant='+grants}:{}}}})});
+ await page.route('**/boost-media/*.png?*',r=>r.fulfill({status:expired&&Number(new URL(r.request().url()).searchParams.get('grant'))<grants?403:200,contentType:'image/svg+xml',headers:{'Cache-Control':'no-store'},body:picture}));
+ await page.goto(env.admin+'/boost/members');await page.getByRole('button',{name:'查看 / 处理'}).click();await page.locator('.evidence .el-image img').waitFor();
+ assert.equal(grants,1);await page.locator('.evidence .el-image').click();const preview=page.locator('.el-image-viewer__canvas img');await preview.waitFor();assert.equal(grants,2);checks.push('缩略图刚加载即点击预览，不被重复提交拦截器误拦截');await page.locator('.el-image-viewer__close').click();
+ expired=true;await page.clock.setFixedTime(new Date(Date.now()+180000));await page.locator('.evidence .el-image').click();await preview.waitFor();
+ assert.equal(grants,3,'Opening an idle private image must fetch a fresh grant');assert.match(await preview.getAttribute('src'),/grant=3/);
+ await preview.evaluate(image=>image.complete&&image.naturalWidth>0?true:new Promise((resolve,reject)=>{image.onload=()=>resolve(true);image.onerror=()=>reject(new Error('preview image did not load'))}));
+ assert.equal(await page.evaluate(()=>document.querySelector('.el-image-viewer__wrapper').contains(document.elementFromPoint(innerWidth-200,innerHeight/2))),true,'The viewer must appear above the detail drawer');
+ checks.push('停留超过签名有效期后，点击凭证重新授权并成功预览，预览层位于抽屉上方');await page.screenshot({path:path.join(output,'admin-media-preview.png'),animations:'disabled'});
+ await page.locator('.el-image-viewer__close').click();allowed=false;await page.locator('.evidence .el-image').click();await page.getByText('图片暂时无法查看，请刷新后重试',{exact:true}).waitFor();assert.equal(grants,4,'Denial must come from a fresh server authorization check');assert.equal(await page.locator('.el-image-viewer__wrapper').count(),0);checks.push('权限不再允许时不会复用旧签名打开图片');
+ assert.deepEqual(errors,[]);const result={passed:true,checks,errors};fs.writeFileSync(path.join(output,'admin-media-preview.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result,null,2));
+})().catch(async e=>{console.error(e);const page=browser?.contexts()[0]?.pages()[0];if(page){console.error('Page URL: '+page.url());console.error((await page.locator('body').innerText()).slice(0,1800));await page.screenshot({path:path.join(output,'admin-media-preview-failure.png'),fullPage:true}).catch(()=>{})}process.exitCode=1}).finally(async()=>{await browser?.close()});

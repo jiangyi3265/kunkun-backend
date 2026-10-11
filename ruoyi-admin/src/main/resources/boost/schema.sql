@@ -1,0 +1,115 @@
+-- Additive migration. Existing RuoYi tables and business data are never dropped.
+CREATE TABLE IF NOT EXISTS boost_member (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, username VARCHAR(32) NOT NULL UNIQUE,
+ password_hash VARCHAR(100) NOT NULL, nickname VARCHAR(32) NOT NULL, openid VARCHAR(100) UNIQUE,
+ avatar VARCHAR(500) NOT NULL DEFAULT 'hero', status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+ certification VARCHAR(20) NOT NULL DEFAULT 'NONE', skill VARCHAR(100) NOT NULL DEFAULT '',
+ proof TEXT, review_note VARCHAR(500) NOT NULL DEFAULT '',
+ balance_cents BIGINT NOT NULL DEFAULT 0, notify_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS boost_session (
+ token_hash VARCHAR(64) PRIMARY KEY, member_id BIGINT NOT NULL,
+ expires_at TIMESTAMP NOT NULL, FOREIGN KEY(member_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_listing (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, owner_id BIGINT NOT NULL, kind VARCHAR(16) NOT NULL,
+ title VARCHAR(80) NOT NULL, game VARCHAR(30) NOT NULL, zone VARCHAR(30) NOT NULL,
+ platform VARCHAR(20) NOT NULL, current_rank VARCHAR(30) NOT NULL DEFAULT '',
+ target_rank VARCHAR(30) NOT NULL DEFAULT '', duration_hours INT NOT NULL,
+ price_cents BIGINT NOT NULL, description TEXT NOT NULL, images TEXT,
+ status VARCHAR(20) NOT NULL DEFAULT 'PENDING', review_note VARCHAR(500) NOT NULL DEFAULT '',
+ sales INT NOT NULL DEFAULT 0, views INT NOT NULL DEFAULT 0,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(owner_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_coupon (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, member_id BIGINT NOT NULL,
+ title VARCHAR(60) NOT NULL, discount_cents BIGINT NOT NULL, minimum_cents BIGINT NOT NULL,
+ expires_at TIMESTAMP NOT NULL, used_order_id BIGINT, FOREIGN KEY(member_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_order (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, order_no VARCHAR(40) NOT NULL UNIQUE,
+ request_key VARCHAR(64) NOT NULL, buyer_id BIGINT NOT NULL, worker_id BIGINT NOT NULL,
+ listing_id BIGINT NOT NULL, title VARCHAR(80) NOT NULL, game VARCHAR(30) NOT NULL,
+ zone VARCHAR(30) NOT NULL, platform VARCHAR(20) NOT NULL,
+ current_rank VARCHAR(30) NOT NULL DEFAULT '', target_rank VARCHAR(30) NOT NULL DEFAULT '',
+ duration_hours INT NOT NULL, note VARCHAR(1000) NOT NULL DEFAULT '', snapshot_images TEXT,
+ original_cents BIGINT NOT NULL, discount_cents BIGINT NOT NULL DEFAULT 0,
+ amount_cents BIGINT NOT NULL, coupon_id BIGINT, status VARCHAR(20) NOT NULL DEFAULT 'WAIT_PAY',
+ progress INT NOT NULL DEFAULT 0, payment_mode VARCHAR(20), transaction_id VARCHAR(100),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, paid_at TIMESTAMP NULL,
+ completed_at TIMESTAMP NULL, provider_checked_at TIMESTAMP NULL, UNIQUE(buyer_id,request_key),
+ FOREIGN KEY(buyer_id) REFERENCES boost_member(id), FOREIGN KEY(worker_id) REFERENCES boost_member(id),
+ FOREIGN KEY(listing_id) REFERENCES boost_listing(id)
+);
+CREATE TABLE IF NOT EXISTS boost_progress (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, order_id BIGINT NOT NULL, member_id BIGINT NOT NULL,
+ percent INT NOT NULL, note VARCHAR(1000) NOT NULL, images TEXT,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(order_id) REFERENCES boost_order(id)
+);
+CREATE TABLE IF NOT EXISTS boost_aftersale (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, order_id BIGINT NOT NULL UNIQUE, member_id BIGINT NOT NULL,
+ reason VARCHAR(100) NOT NULL, description VARCHAR(1000) NOT NULL, images TEXT,
+ amount_cents BIGINT NOT NULL, previous_status VARCHAR(20) NOT NULL,
+ status VARCHAR(20) NOT NULL DEFAULT 'PENDING', reply VARCHAR(1000) NOT NULL DEFAULT '',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(order_id) REFERENCES boost_order(id)
+);
+CREATE TABLE IF NOT EXISTS boost_ledger (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, member_id BIGINT NOT NULL,
+ event_key VARCHAR(100) NOT NULL UNIQUE, kind VARCHAR(30) NOT NULL, title VARCHAR(100) NOT NULL,
+ amount_cents BIGINT NOT NULL, balance_cents BIGINT NOT NULL, order_id BIGINT,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(member_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_withdrawal (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, member_id BIGINT NOT NULL, request_key VARCHAR(64) NOT NULL,
+ amount_cents BIGINT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+ account_name VARCHAR(100) NOT NULL, account_number VARCHAR(100) NOT NULL,
+ note VARCHAR(500) NOT NULL DEFAULT '', provider_bill VARCHAR(100), confirm_package TEXT, provider_checked_at TIMESTAMP NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(member_id,request_key), FOREIGN KEY(member_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_conversation (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, member_a BIGINT NOT NULL, member_b BIGINT NOT NULL,
+ listing_id BIGINT, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(member_a,member_b), FOREIGN KEY(member_a) REFERENCES boost_member(id),
+ FOREIGN KEY(member_b) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_message (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, conversation_id BIGINT NOT NULL, sender_id BIGINT NOT NULL,
+ content VARCHAR(2000) NOT NULL, kind VARCHAR(16) NOT NULL DEFAULT 'TEXT',
+ is_read BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(conversation_id) REFERENCES boost_conversation(id)
+);
+CREATE TABLE IF NOT EXISTS boost_notification (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, member_id BIGINT NOT NULL, title VARCHAR(100) NOT NULL,
+ content VARCHAR(500) NOT NULL, order_id BIGINT, is_read BOOLEAN NOT NULL DEFAULT FALSE,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(member_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_favorite (
+ member_id BIGINT NOT NULL, listing_id BIGINT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(member_id,listing_id), FOREIGN KEY(member_id) REFERENCES boost_member(id),
+ FOREIGN KEY(listing_id) REFERENCES boost_listing(id)
+);
+CREATE TABLE IF NOT EXISTS boost_history (
+ member_id BIGINT NOT NULL, listing_id BIGINT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(member_id,listing_id), FOREIGN KEY(member_id) REFERENCES boost_member(id),
+ FOREIGN KEY(listing_id) REFERENCES boost_listing(id)
+);
+CREATE TABLE IF NOT EXISTS boost_follow (
+ member_id BIGINT NOT NULL, seller_id BIGINT NOT NULL,
+ PRIMARY KEY(member_id,seller_id), FOREIGN KEY(member_id) REFERENCES boost_member(id),
+ FOREIGN KEY(seller_id) REFERENCES boost_member(id)
+);
+CREATE TABLE IF NOT EXISTS boost_review (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, order_id BIGINT NOT NULL UNIQUE, listing_id BIGINT NOT NULL,
+ member_id BIGINT NOT NULL, stars INT NOT NULL, content VARCHAR(1000) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(order_id) REFERENCES boost_order(id)
+);
+CREATE TABLE IF NOT EXISTS boost_audit (
+ id BIGINT PRIMARY KEY AUTO_INCREMENT, admin_id BIGINT NOT NULL, action VARCHAR(80) NOT NULL,
+ target_id BIGINT NOT NULL, note VARCHAR(1000) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS boost_config (
+ config_key VARCHAR(60) PRIMARY KEY, config_value TEXT NOT NULL
+);

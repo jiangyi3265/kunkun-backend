@@ -1,0 +1,32 @@
+-- Add only the new business menu. Never replace the existing RuoYi menu tree.
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87000,'代练业务',0,1,'boost',NULL,1,0,'M','0','0','','skill','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87000);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87001,'业务概览',87000,1,'overview','boost/overview',1,0,'C','0','0','boost:overview:read','dashboard','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87001);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87002,'发布审核',87000,2,'listings','boost/console',1,1,'C','0','0','boost:listings:read','list','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87002);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87003,'用户与打手',87000,3,'members','boost/console',1,1,'C','0','0','boost:members:read','user','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87003);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87004,'订单管理',87000,4,'orders','boost/console',1,1,'C','0','0','boost:orders:read','shopping','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87004);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87005,'售后处理',87000,5,'aftersales','boost/console',1,1,'C','0','0','boost:aftersales:read','message','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87005);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87006,'提现审核',87000,6,'withdrawals','boost/console',1,1,'C','0','0','boost:withdrawals:read','money','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87006);
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,component,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time)
+SELECT 87007,'业务日志',87000,7,'audit','boost/console',1,1,'C','0','0','boost:audit:read','log','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE menu_id=87007);
+
+-- Upgrade only this project's owned menu entries; roles retain their read grants.
+UPDATE sys_menu SET perms='boost:overview:read' WHERE menu_id=87001 AND parent_id=87000 AND path='overview' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:listings:read' WHERE menu_id=87002 AND parent_id=87000 AND path='listings' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:members:read' WHERE menu_id=87003 AND parent_id=87000 AND path='members' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:orders:read' WHERE menu_id=87004 AND parent_id=87000 AND path='orders' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:aftersales:read' WHERE menu_id=87005 AND parent_id=87000 AND path='aftersales' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:withdrawals:read' WHERE menu_id=87006 AND parent_id=87000 AND path='withdrawals' AND component IN ('boost/overview','boost/console');
+UPDATE sys_menu SET perms='boost:audit:read' WHERE menu_id=87007 AND parent_id=87000 AND path='audit' AND component IN ('boost/overview','boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87020,'发布审核',87002,1,'#',1,0,'F','0','0','boost:listings:review','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87020) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87002 AND parent_id=87000 AND component='boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87021,'认证审核',87003,1,'#',1,0,'F','0','0','boost:members:review','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87021) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87003 AND parent_id=87000 AND component='boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87022,'账号停用与恢复',87003,1,'#',1,0,'F','0','0','boost:members:status','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87022) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87003 AND parent_id=87000 AND component='boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87023,'退款审核',87005,1,'#',1,0,'F','0','0','boost:aftersales:review','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87023) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87005 AND parent_id=87000 AND component='boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87024,'提现审核',87006,1,'#',1,0,'F','0','0','boost:withdrawals:review','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87024) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87006 AND parent_id=87000 AND component='boost/console');
+INSERT INTO sys_menu(menu_id,menu_name,parent_id,order_num,path,is_frame,is_cache,menu_type,visible,status,perms,icon,create_by,create_time) SELECT 87025,'渠道核对与退款重试',87004,1,'#',1,0,'F','0','0','boost:finance:reconcile','#','admin',CURRENT_TIMESTAMP WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87025) AND EXISTS (SELECT 1 FROM sys_menu WHERE menu_id=87004 AND parent_id=87000 AND component='boost/console');

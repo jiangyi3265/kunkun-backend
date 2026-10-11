@@ -1,0 +1,50 @@
+spring:
+  config:
+    import: classpath:application-druid.yml
+  devtools:
+    restart:
+      enabled: false
+server:
+  address: 127.0.0.1
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: '127\.0\.0\.1|::1'
+    accesslog:
+      enabled: true
+      directory: ${BOOST_LOG_DIR}/access
+      pattern: '%t %a %m %U %s %D'
+swagger:
+  enabled: false
+boost:
+  web-origins: ${BOOST_WEB_ORIGINS}
+  live: true
+  initialize-schema: false
+  demo: false
+  simulated-payment: false
+  payments-enabled: ${BOOST_PAYMENTS_ENABLED:false}
+  free-points-draw-enabled: ${BOOST_FREE_POINTS_DRAW_ENABLED:false}
+  media-dir: ${BOOST_MEDIA_DIR}
+  media-signing-key: ${BOOST_MEDIA_SIGNING_KEY}
+  registration-hourly-limit: 5
+  campaign:
+    daily-budget-cents: ${BOOST_CAMPAIGN_DAILY_CENTS:0}
+    total-budget-cents: ${BOOST_CAMPAIGN_TOTAL_CENTS:0}
+  policy:
+    operator: ${BOOST_OPERATOR}
+    contact: ${BOOST_PRIVACY_EMAIL}
+    retention: ${BOOST_RETENTION}
+    version: ${BOOST_POLICY_VERSION}
+    effective-date: ${BOOST_POLICY_DATE}
+  wechat:
+    app-id: ${BOOST_WX_APP_ID}
+    app-secret: ${BOOST_WX_APP_SECRET}
+    merchant-id: ${BOOST_WX_MERCHANT_ID:}
+    merchant-serial: ${BOOST_WX_MERCHANT_SERIAL:}
+    private-key: ${BOOST_WX_PRIVATE_KEY_PATH:}
+    platform-key: ${BOOST_WX_PLATFORM_KEY_PATH:}
+    platform-key-id: ${BOOST_WX_PLATFORM_KEY_ID:}
+    api-v3-key: ${BOOST_WX_API_V3_KEY:}
+    notify-base: ${BOOST_PUBLIC_API_ORIGIN}
+    transfer-scene-id: ${BOOST_WX_TRANSFER_SCENE:}
+    transfer-reports: ${BOOST_WX_TRANSFER_REPORTS:[]}

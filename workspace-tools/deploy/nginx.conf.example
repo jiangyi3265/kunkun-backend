@@ -1,0 +1,45 @@
+# Replace hosts and certificate paths; run nginx -t before applying.
+# API process binds only to loopback. Serve media through its authorization controller.
+log_format boost_safe '$remote_addr [$time_local] $request_method $uri $status $request_time';
+upstream boost_api { server 127.0.0.1:8080; keepalive 32; }
+server {
+    listen 443 ssl;
+    server_name API_HOST;
+    ssl_certificate /etc/letsencrypt/live/API_HOST/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/API_HOST/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    access_log /srv/boost/shared/logs/nginx-api.log boost_safe;
+    client_max_body_size 10m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+    location / {
+        proxy_pass http://boost_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Connection '';
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 35s;
+    }
+    # Never use alias/root to expose BOOST_MEDIA_DIR, private keys, or environment files.
+}
+server {
+    listen 443 ssl;
+    server_name ADMIN_HOST;
+    ssl_certificate /etc/letsencrypt/live/ADMIN_HOST/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ADMIN_HOST/privkey.pem;
+    root /srv/boost/current/admin;
+    access_log /srv/boost/shared/logs/nginx-admin.log boost_safe;
+    location /prod-api/ { proxy_pass http://boost_api/; proxy_set_header Host $host; proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto https; }
+    location / { try_files $uri $uri/ /index.html; }
+}
+server {
+    listen 443 ssl;
+    server_name WEB_HOST;
+    ssl_certificate /etc/letsencrypt/live/WEB_HOST/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/WEB_HOST/privkey.pem;
+    root /srv/boost/current/h5;
+    access_log /srv/boost/shared/logs/nginx-web.log boost_safe;
+    location / { try_files $uri $uri/ /index.html; }
+}

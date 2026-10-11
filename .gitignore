@@ -1,0 +1,110 @@
+######################################################################
+# Build Tools
+
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+######################################################################
+# IDE
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### JRebel ###
+rebel.xml
+
+### NetBeans ###
+nbproject/private/
+build/*
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+######################################################################
+# Others
+*.log
+*.xml.versionsBackup
+*.swp
+
+!*/build/*.java
+!*/build/*.html
+!*/build/*.xml
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.local
+*.private.*
+*private-key*
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.clixml
+id_rsa*
+id_ed25519*
+# Dependencies, build output and runtime data
+node_modules/
+target/
+dist/
+unpackage/
+.runtime/
+test-results/
+logs/
+uploads/
+private-media/
+public-uploads/
+coverage/
+__pycache__/
+*.pyc
+*.log
+*.log.*
+*.pid
+*.hprof
+*.heapdump
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.zip
+*.tar
+*.gz
+# Editors and temporary files
+.idea/
+.vscode/
+.hbuilderx/
+.DS_Store
+Thumbs.db
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# Keep the original local SQL seed private; publish its credential-free template.
+/sql/ry_20250522.sql

@@ -1,0 +1,39 @@
+// Official Devtools public pages against the same owned HTTP/MySQL acceptance fixture.
+const fs=require('fs'),path=require('path'),net=require('net'),assert=require('assert/strict'),{spawnSync}=require('child_process');
+const root=path.resolve(__dirname,'..'),out=path.join(root,'test-results/market-content-20261009/native-live'),base='https://ceshisss.oksja.cn',meta=JSON.parse(fs.readFileSync(path.join(root,'test-results/market-content-20261009/release-package.json'),'utf8')),project=path.join(path.dirname(meta.archive),'upload-mini');fs.mkdirSync(out,{recursive:true});
+const report={startedAt:new Date().toISOString(),scope:'Official immutable uploaded release and actual public HTTPS API with domain checks enabled. Read-only; no phone or experience selection claims.',checks:[],exceptions:[],commands:[]};let mini;
+function run(name,exe,args,cwd=root,env={}){const r=spawnSync(exe,args,{cwd,env:{...process.env,...env},windowsHide:true,encoding:'utf8',timeout:180000,maxBuffer:20000000});fs.writeFileSync(path.join(out,name+'.log'),(r.stdout||'')+(r.stderr||''));report.commands.push({name,exe,args,exitCode:r.status});assert.equal(r.status,0,name);return r;}
+async function until(fn,label,ms=20000){const deadline=Date.now()+ms;while(Date.now()<deadline){if(await fn())return;await new Promise(r=>setTimeout(r,200))}throw Error(label+' timed out')}
+async function timed(label,fn,ms=20000){let timer;try{return await Promise.race([fn(),new Promise((_,reject)=>timer=setTimeout(()=>reject(Error(label+' timed out')),ms))])}finally{clearTimeout(timer)}}
+async function freePort(){return new Promise(r=>{const s=net.createServer();s.listen(0,'127.0.0.1',()=>{const p=s.address().port;s.close(()=>r(p))})})}
+async function element(p,s){await timed('render '+s,()=>p.waitFor(s));const x=await p.$(s);assert(x,s);return x}
+async function shot(name){await new Promise(r=>setTimeout(r,1000));await mini.screenshot({path:path.join(out,name+'.png')})}
+async function check(name,fn){await fn();report.checks.push({name,status:'已实测通过'});console.log('PASS '+name)}
+(async()=>{try{
+const pc=JSON.parse(fs.readFileSync(path.join(project,'project.config.json'),'utf8'));assert.equal(pc.setting.urlCheck,true);report.project=project;
+ const automationPort=await freePort();report.automationPort=automationPort;
+ run('native-auto','powershell.exe',['-NoProfile','-NonInteractive','-Command','& $env:QA_WECHAT_CLI auto --project $env:QA_NATIVE_PROJECT --auto-port $env:QA_AUTO_PORT --port 9420 --lang zh; exit $LASTEXITCODE'],root,{QA_WECHAT_CLI:'D:/wxkfgj/微信web开发者工具/cli.bat',QA_NATIVE_PROJECT:project,QA_AUTO_PORT:String(automationPort)});
+ // CLI acknowledgement precedes the automation listener; wait on the actual owned port.
+ await until(()=>new Promise(resolve=>{const socket=net.connect(automationPort,'127.0.0.1');socket.setTimeout(700);socket.once('connect',()=>{socket.destroy();resolve(true)});socket.once('error',()=>{socket.destroy();resolve(false)});socket.once('timeout',()=>{socket.destroy();resolve(false)})}),'official automation listener',30000);
+ // The automation TCP listener starts before Tool.getInfo has an SDKVersion.
+ // Probe the same read-only SDK protocol first; do not bypass its version check.
+ const sdkRoot=path.join(root,'.runtime/mini-blank-tools/node_modules/miniprogram-automator');
+ const Connection=require(path.join(sdkRoot,'out/Connection')).default,Transport=require(path.join(sdkRoot,'out/Transport')).default,MiniProgram=require(path.join(sdkRoot,'out/MiniProgram')).default;
+ const WebSocket=require(require.resolve('ws',{paths:[sdkRoot]}));
+ const socket=new WebSocket('ws://127.0.0.1:'+automationPort,{handshakeTimeout:8000});
+ try{await new Promise((resolve,reject)=>{socket.once('open',resolve);socket.once('error',reject)})}catch(e){socket.terminate();throw e}
+ // Keep a single connection: disposing a readiness-only client can detach the
+ // IDE automation context before the replacement client receives page metadata.
+ const readyConnection=new Connection(new Transport(socket));mini=new MiniProgram(readyConnection);report.sdkReadiness=[];
+ await until(async()=>{const info=await timed('read SDK readiness',()=>readyConnection.send('Tool.getInfo',{}),5000);const version=info?.SDKVersion;report.sdkReadiness.push({at:new Date().toISOString(),sdkVersion:version||null});return typeof version==='string'&&version.length>0},'official tool SDK initialization',45000);
+ await mini.checkVersion();mini.on('exception',e=>report.exceptions.push(String(e.message||e)));const info=await mini.callWxMethod('getAccountInfoSync');assert.equal(info.miniProgram.appId,pc.appid);report.system=await mini.systemInfo();
+ // An open automation socket does not prove the initial WebView is registered.
+ // Match the SDK launch grace period, then require an actual visible home element.
+ await new Promise(resolve=>setTimeout(resolve,5000));
+ let initialPage;await until(async()=>{try{initialPage=await mini.currentPage();return !!initialPage}catch(e){if(String(e.message).includes('getPageMetaByWebviewId'))return false;throw e}},'initial native WebView',30000);
+ await element(initialPage,'.hero-image-link');report.initialNativePage=initialPage.path;
+
+ await check('live HTTPS API accepts release mini requests with URL checks on',async()=>{const r=await mini.evaluate(()=>new Promise((resolve,reject)=>wx.request({url:'https://ceshisss.oksja.cn/boost/config',success:x=>resolve(x.data),fail:reject})));assert.equal(r.code,200);assert.equal(r.data.contentEnabled,true);assert.equal(r.data.paymentsEnabled,false);report.liveConfig={contentEnabled:r.data.contentEnabled,paymentsEnabled:r.data.paymentsEnabled}});
+ await check('uploaded release home and independent activity list render',async()=>{let p=await mini.reLaunch('/pages/index/index');await element(p,'.hero-image-link');await shot('home');p=await mini.reLaunch('/pages/content/activities');await element(p,'.activities-page');await until(async()=> (await(await element(p,'.activities-page')).text()).includes('暂无新活动'),'actual empty activities');const text=await(await element(p,'.activities-page')).text();assert(text.includes('最新活动')&&text.includes('历史活动'));await shot('activities');});
+ assert.deepEqual(report.exceptions,[]);report.exitCode=0;report.status='已实测通过';
+}catch(e){report.exitCode=1;report.status='失败';report.error=e.stack;console.error(e.stack);try{if(mini)await shot('native-failure')}catch{}}finally{mini?.disconnect();try{run('native-content-close','powershell.exe',['-NoProfile','-NonInteractive','-Command','& $env:QA_WECHAT_CLI close --project $env:QA_NATIVE_PROJECT --port 9420 --lang zh; exit $LASTEXITCODE'],root,{QA_WECHAT_CLI:'D:/wxkfgj/微信web开发者工具/cli.bat',QA_NATIVE_PROJECT:project})}catch(e){report.cleanupError=e.message;report.exitCode=1}report.finishedAt=new Date().toISOString();fs.writeFileSync(path.join(out,'native-content-live.json'),JSON.stringify(report,null,2));process.exitCode=report.exitCode}})();

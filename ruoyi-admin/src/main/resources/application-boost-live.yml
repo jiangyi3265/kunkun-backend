@@ -1,0 +1,5 @@
+# Legacy profile name shares all mandatory production configuration and guards.
+# Use SPRING_PROFILES_ACTIVE=prod for new deployments.
+spring:
+  config:
+    import: classpath:application-prod.yml

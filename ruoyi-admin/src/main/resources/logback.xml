@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+ <property name="log.path" value="${BOOST_LOG_DIR:-./logs}"/>
+ <property name="log.pattern" value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} [%thread] %-5level %logger{40} - %msg%n"/>
+ <appender name="console" class="ch.qos.logback.core.ConsoleAppender"><encoder><charset>UTF-8</charset><pattern>${log.pattern}</pattern></encoder></appender>
+ <appender name="application" class="ch.qos.logback.core.rolling.RollingFileAppender">
+  <file>${log.path}/application.log</file>
+  <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy"><fileNamePattern>${log.path}/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern><maxFileSize>100MB</maxFileSize><maxHistory>30</maxHistory><totalSizeCap>2GB</totalSizeCap></rollingPolicy>
+  <encoder><charset>UTF-8</charset><pattern>${log.pattern}</pattern></encoder>
+  <filter class="ch.qos.logback.classic.filter.ThresholdFilter"><level>INFO</level></filter>
+ </appender>
+ <logger name="com.ruoyi" level="INFO"/><logger name="org.springframework" level="WARN"/>
+ <root level="INFO"><appender-ref ref="console"/><appender-ref ref="application"/></root>
+</configuration>
